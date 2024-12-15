@@ -192,7 +192,7 @@ export class World {
                 }
             `,
             transparent: true,
-            side: THREE.FrontSide,
+            side: THREE.DoubleSide,
             depthWrite: false,
             blending: THREE.AdditiveBlending
         });
