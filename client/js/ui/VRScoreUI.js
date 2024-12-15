@@ -175,8 +175,8 @@ export class VRScoreUI {
     }
 
     createStartButton() {
-        // Create button geometry
-        const geometry = new THREE.BoxGeometry(1.2, 0.6, 0.1);
+        // Create button geometry with more depth for better ray intersection
+        const geometry = new THREE.BoxGeometry(1.2, 0.6, 0.2);
         
         // Create materials for different button states
         const materials = {
@@ -199,7 +199,7 @@ export class VRScoreUI {
 
         // Create button mesh
         this.startButton = new THREE.Mesh(geometry, materials.default);
-        this.startButton.position.set(0, -2, 0.05); // Position at bottom of panel
+        this.startButton.position.set(0, -2, 0.1); // Move slightly forward for better ray intersection
         this.startButton.userData = {
             type: 'button',
             materials: materials,
@@ -226,7 +226,7 @@ export class VRScoreUI {
         
         const textGeometry = new THREE.PlaneGeometry(1, 0.5);
         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-        textMesh.position.set(0, 0, 0.06); // Slightly in front of the button
+        textMesh.position.set(0, 0, 0.11); // Position text slightly in front of button
         this.startButton.add(textMesh);
 
         // Add to scoreGroup
@@ -352,40 +352,70 @@ export class VRScoreUI {
 
         // Check for start button interaction
         if (this.startButton && !this.engine.uiManager.gameStarted) {
-            const controllers = this.engine.inputManager.controllers;
             const session = this.engine.renderer.xr.getSession();
             
-            if (!session) return;
-            
-            for (let i = 0; i < controllers.length; i++) {
-                const controller = controllers[i];
-                const inputSource = session.inputSources[i];
-                if (!inputSource) continue;
+            if (session) {
+                // VR Mode interaction
+                const controllers = this.engine.inputManager.controllers;
                 
-                const gamepad = inputSource.gamepad;
-                if (!gamepad) continue;
+                for (let i = 0; i < controllers.length; i++) {
+                    const controller = controllers[i];
+                    const inputSource = session.inputSources[i];
+                    if (!inputSource) continue;
+                    
+                    const gamepad = inputSource.gamepad;
+                    if (!gamepad) continue;
 
-                // Create temporary objects for raycasting
-                const tempMatrix = new THREE.Matrix4();
+                    // Create temporary objects for raycasting
+                    const tempMatrix = new THREE.Matrix4();
+                    const raycaster = new THREE.Raycaster();
+                    
+                    tempMatrix.identity().extractRotation(controller.matrixWorld);
+                    raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+                    raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+                    // Check intersection in world space first
+                    const intersects = raycaster.intersectObject(this.startButton, true);
+
+                    if (intersects.length > 0) {
+                        this.startButton.material = this.startButton.userData.materials.hover;
+
+                        if (gamepad.buttons[0] && gamepad.buttons[0].pressed) {
+                            this.startButton.material = this.startButton.userData.materials.pressed;
+                            
+                            // Add haptic feedback
+                            if (gamepad.hapticActuators && gamepad.hapticActuators[0]) {
+                                gamepad.hapticActuators[0].pulse(1.0, 100);
+                            }
+                            
+                            this.engine.uiManager.handleGameStart();
+                        }
+                    } else {
+                        this.startButton.material = this.startButton.userData.materials.default;
+                    }
+                }
+            } else {
+                // Non-VR Mode interaction
                 const raycaster = new THREE.Raycaster();
+                const mouse = this.engine.inputManager.mouse;
                 
-                tempMatrix.identity().extractRotation(controller.matrixWorld);
-                raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-                raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+                // Convert mouse position to normalized device coordinates
+                const mouseNDC = new THREE.Vector2(
+                    (mouse.x / window.innerWidth) * 2 - 1,
+                    -(mouse.y / window.innerHeight) * 2 + 1
+                );
+                
+                // Update the picking ray with the camera and mouse position
+                raycaster.setFromCamera(mouseNDC, this.engine.camera);
 
-                const intersects = raycaster.intersectObject(this.startButton);
+                // Check intersection in world space
+                const intersects = raycaster.intersectObject(this.startButton, true);
 
                 if (intersects.length > 0) {
                     this.startButton.material = this.startButton.userData.materials.hover;
-
-                    if (gamepad.buttons[0] && gamepad.buttons[0].pressed) {
+                    
+                    if (this.engine.inputManager.mouseButtons.left) {
                         this.startButton.material = this.startButton.userData.materials.pressed;
-                        
-                        // Add haptic feedback
-                        if (gamepad.hapticActuators && gamepad.hapticActuators[0]) {
-                            gamepad.hapticActuators[0].pulse(1.0, 100);
-                        }
-                        
                         this.engine.uiManager.handleGameStart();
                     }
                 } else {
