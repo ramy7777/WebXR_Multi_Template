@@ -11,44 +11,66 @@ export class World {
     }
 
     async setupEnvironment() {
-        // Create the main room
-        const roomWidth = 40;
-        const roomHeight = 8;
-        const roomDepth = 40;
+        const platformRadius = 10;
 
-        // Floor
-        const floorGeometry = new THREE.PlaneGeometry(roomWidth, roomDepth);
-        const floorMaterial = new THREE.MeshStandardMaterial({
-            color: 0x3a3a4a,
+        // Create circular platform texture with fade
+        const textureSize = 1024;
+        const canvas = document.createElement('canvas');
+        canvas.width = textureSize;
+        canvas.height = textureSize;
+        const ctx = canvas.getContext('2d');
+
+        // Create radial gradient for the fade effect
+        const gradient = ctx.createRadialGradient(
+            textureSize/2, textureSize/2, 0,
+            textureSize/2, textureSize/2, textureSize/2
+        );
+        gradient.addColorStop(0, '#3a3a4a');
+        gradient.addColorStop(0.7, '#3a3a4a');
+        gradient.addColorStop(1, 'transparent');
+
+        // Fill the circle with gradient
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(textureSize/2, textureSize/2, textureSize/2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Add subtle circular grid lines
+        ctx.strokeStyle = '#4444ff';
+        for (let radius = platformRadius * 20; radius > 0; radius -= 20) {
+            ctx.beginPath();
+            ctx.arc(textureSize/2, textureSize/2, radius, 0, Math.PI * 2);
+            ctx.globalAlpha = 0.1 * (radius / (platformRadius * 20));
+            ctx.stroke();
+        }
+
+        const platformTexture = new THREE.CanvasTexture(canvas);
+
+        // Create the circular platform
+        const platformGeometry = new THREE.CircleGeometry(platformRadius, 64);
+        const platformMaterial = new THREE.MeshStandardMaterial({
+            map: platformTexture,
+            transparent: true,
             roughness: 0.4,
             metalness: 0.6,
+            emissive: new THREE.Color(0x1111ff),
+            emissiveIntensity: 0.1
         });
-        this.materials.set('floor', floorMaterial);
 
-        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-        floor.rotation.x = -Math.PI / 2;
-        floor.position.y = 0;
-        this.engine.scene.add(floor);
-        this.ground = floor;
-        this.objects.add(floor);
+        const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+        platform.rotation.x = -Math.PI / 2;
+        platform.position.y = 0;
+        this.engine.scene.add(platform);
+        this.ground = platform;
+        this.objects.add(platform);
 
-        // Ceiling
-        const ceilingGeometry = new THREE.PlaneGeometry(roomWidth, roomDepth);
-        const ceilingMaterial = new THREE.MeshStandardMaterial({
-            color: 0x3a3a4a,
-            roughness: 0.4,
-            metalness: 0.6,
-        });
-        this.materials.set('ceiling', ceilingMaterial);
-
-        const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
-        ceiling.rotation.x = Math.PI / 2;
-        ceiling.position.y = roomHeight;
-        this.engine.scene.add(ceiling);
-        this.objects.add(ceiling);
-
-        // Add glowing edges
-        this.addGlowingEdges(roomWidth, roomHeight, roomDepth);
+        // Add a grid helper that matches the platform size
+        const gridHelper = new THREE.GridHelper(platformRadius * 2, 20, 0x0000ff, 0x404040);
+        gridHelper.position.y = 0.01;
+        gridHelper.material.opacity = 0.3;
+        gridHelper.material.transparent = true;
+        this.engine.scene.add(gridHelper);
+        this.objects.add(gridHelper);
 
         // Add a darker skybox
         const skyGeometry = new THREE.BoxGeometry(1000, 1000, 1000);
@@ -61,110 +83,49 @@ export class World {
         this.engine.scene.add(skybox);
         this.objects.add(skybox);
 
-        // Add walls with a futuristic look
-        this.addFuturisticWalls(roomWidth, roomHeight, roomDepth);
-
         // Add ambient lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
         this.engine.scene.add(ambientLight);
 
-        // Add point lights in corners
-        const cornerLights = [
-            [-roomWidth/2.2, roomHeight-1, -roomDepth/2.2],
-            [-roomWidth/2.2, roomHeight-1, roomDepth/2.2],
-            [roomWidth/2.2, roomHeight-1, -roomDepth/2.2],
-            [roomWidth/2.2, roomHeight-1, roomDepth/2.2]
-        ];
-
-        cornerLights.forEach(position => {
-            const light = new THREE.PointLight(0x6666ff, 0.8, roomWidth * 1.5);
-            light.position.set(...position);
-            this.engine.scene.add(light);
-        });
-
         // Add central light
-        const centralLight = new THREE.PointLight(0xffffff, 1, roomWidth * 2);
-        centralLight.position.set(0, roomHeight - 2, 0);
+        const centralLight = new THREE.PointLight(0xffffff, 1, platformRadius * 4);
+        centralLight.position.set(0, platformRadius, 0);
         this.engine.scene.add(centralLight);
 
-        // Add strip lights along the walls
-        const stripLights = [
-            [0, roomHeight-1, depth/2-0.5],  // front
-            [0, roomHeight-1, -depth/2+0.5], // back
-            [-width/2+0.5, roomHeight-1, 0], // left
-            [width/2-0.5, roomHeight-1, 0]   // right
-        ];
-
-        stripLights.forEach(position => {
-            const light = new THREE.PointLight(0xaaaaff, 0.6, roomWidth);
-            light.position.set(...position);
+        // Add accent lights around the platform
+        const numLights = 6;
+        for (let i = 0; i < numLights; i++) {
+            const angle = (i / numLights) * Math.PI * 2;
+            const x = Math.cos(angle) * (platformRadius - 1);
+            const z = Math.sin(angle) * (platformRadius - 1);
+            
+            const light = new THREE.PointLight(0x4444ff, 0.5, platformRadius * 2);
+            light.position.set(x, 2, z);
             this.engine.scene.add(light);
-        });
-    }
+        }
 
-    addGlowingEdges(width, height, depth) {
-        const edgeGeometry = new THREE.BoxGeometry(0.1, height, 0.1);
-        const edgeMaterial = new THREE.MeshBasicMaterial({
-            color: 0x00ff88,
+        // Add a subtle glow effect around the platform
+        const glowGeometry = new THREE.RingGeometry(platformRadius, platformRadius + 1, 64);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: 0x0033ff,
             transparent: true,
-            opacity: 0.8
-        });
-        this.materials.set('edge', edgeMaterial);
-
-        // Create vertical edges at corners
-        const edgePositions = [
-            [-width/2, height/2, -depth/2],
-            [-width/2, height/2, depth/2],
-            [width/2, height/2, -depth/2],
-            [width/2, height/2, depth/2]
-        ];
-
-        edgePositions.forEach(position => {
-            const edge = new THREE.Mesh(edgeGeometry, edgeMaterial);
-            edge.position.set(...position);
-            this.engine.scene.add(edge);
-            this.objects.add(edge);
-        });
-    }
-
-    addFuturisticWalls(width, height, depth) {
-        const wallMaterial = new THREE.MeshStandardMaterial({
-            color: 0x3a3a4a,
-            roughness: 0.4,
-            metalness: 0.6,
+            opacity: 0.2,
             side: THREE.DoubleSide
         });
-        this.materials.set('wall', wallMaterial);
+        
+        const glowRing = new THREE.Mesh(glowGeometry, glowMaterial);
+        glowRing.rotation.x = -Math.PI / 2;
+        glowRing.position.y = 0.02;
+        this.engine.scene.add(glowRing);
+        this.objects.add(glowRing);
+    }
 
-        // Create walls
-        const wallGeometries = [
-            new THREE.PlaneGeometry(width, height), // front
-            new THREE.PlaneGeometry(width, height), // back
-            new THREE.PlaneGeometry(depth, height), // left
-            new THREE.PlaneGeometry(depth, height)  // right
-        ];
+    addGlowingEdges() {
+        // This method is no longer needed
+    }
 
-        const wallPositions = [
-            [0, height/2, depth/2],
-            [0, height/2, -depth/2],
-            [-width/2, height/2, 0],
-            [width/2, height/2, 0]
-        ];
-
-        const wallRotations = [
-            [0, 0, 0],
-            [0, Math.PI, 0],
-            [0, -Math.PI/2, 0],
-            [0, Math.PI/2, 0]
-        ];
-
-        wallGeometries.forEach((geometry, index) => {
-            const wall = new THREE.Mesh(geometry, wallMaterial);
-            wall.position.set(...wallPositions[index]);
-            wall.rotation.setFromVector3(new THREE.Vector3(...wallRotations[index]));
-            this.engine.scene.add(wall);
-            this.objects.add(wall);
-        });
+    addFuturisticWalls() {
+        // This method is no longer needed
     }
 
     createFallbackGround() {
