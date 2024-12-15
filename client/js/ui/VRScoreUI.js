@@ -36,7 +36,7 @@ export class VRScoreUI {
         this.scoreGroup.rotation.y = Math.PI/2; // Rotate to face into the room
 
         // Add main background panel with gradient effect
-        const mainPanelGeometry = new THREE.PlaneGeometry(4, 6); // Larger panel for wall display
+        const mainPanelGeometry = new THREE.PlaneGeometry(4, 6);
         const gradientTexture = this.createGradientTexture();
         const mainPanelMaterial = new THREE.MeshBasicMaterial({ 
             map: gradientTexture,
@@ -48,8 +48,52 @@ export class VRScoreUI {
         mainPanel.position.z = -0.02;
         this.scoreGroup.add(mainPanel);
 
-        // Add glow effect
-        const glowGeometry = new THREE.PlaneGeometry(4.2, 6.2);
+        // Add border frame
+        const borderWidth = 0.1;
+        const borderGeometry = new THREE.PlaneGeometry(4.2, 6.2);
+        const borderMaterial = new THREE.MeshBasicMaterial({
+            color: 0x4099ff,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide
+        });
+        const border = new THREE.Mesh(borderGeometry, borderMaterial);
+        border.position.z = -0.015;
+        this.scoreGroup.add(border);
+
+        // Add inner border
+        const innerBorderGeometry = new THREE.PlaneGeometry(4, 6);
+        const innerBorder = new THREE.Mesh(innerBorderGeometry, borderMaterial.clone());
+        innerBorder.position.z = -0.016;
+        this.scoreGroup.add(innerBorder);
+
+        // Create corner decorations
+        const cornerSize = 0.3;
+        const cornerGeometry = new THREE.PlaneGeometry(cornerSize, cornerSize);
+        const cornerMaterial = new THREE.MeshBasicMaterial({
+            color: 0x4099ff,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+
+        // Add corners
+        const cornerPositions = [
+            { x: -2.1, y: 3.1 },  // Top left
+            { x: 2.1, y: 3.1 },   // Top right
+            { x: -2.1, y: -3.1 }, // Bottom left
+            { x: 2.1, y: -3.1 }   // Bottom right
+        ];
+
+        cornerPositions.forEach((pos, index) => {
+            const corner = new THREE.Mesh(cornerGeometry, cornerMaterial);
+            corner.position.set(pos.x, pos.y, -0.014);
+            corner.rotation.z = (Math.PI / 4) + (Math.PI / 2 * index);
+            this.scoreGroup.add(corner);
+        });
+
+        // Add glow effect with pulsing animation
+        const glowGeometry = new THREE.PlaneGeometry(4.4, 6.4);
         const glowMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 color: { value: new THREE.Color(0x4099ff) },
@@ -68,7 +112,10 @@ export class VRScoreUI {
                 varying vec2 vUv;
                 void main() {
                     float dist = length(vUv - vec2(0.5));
-                    float alpha = smoothstep(0.5, 0.4, dist) * (0.3 + 0.1 * sin(time * 2.0));
+                    float pulse = 0.3 + 0.1 * sin(time * 2.0);
+                    float edge = smoothstep(0.5, 0.4, dist);
+                    float border = smoothstep(0.48, 0.47, dist) * smoothstep(0.45, 0.46, dist);
+                    float alpha = (edge * pulse) + (border * 0.8);
                     gl_FragColor = vec4(color, alpha);
                 }
             `,
@@ -79,16 +126,16 @@ export class VRScoreUI {
         glowPanel.position.z = -0.03;
         this.scoreGroup.add(glowPanel);
 
-        // Add title
+        // Add title with enhanced styling
         if (this.font) {
             const titleGeometry = new TextGeometry('LEADERBOARD', {
                 font: this.font,
-                size: 0.3, // Larger text for wall display
-                height: 0.02,
+                size: 0.3,
+                height: 0.05,
                 curveSegments: 12,
                 bevelEnabled: true,
-                bevelThickness: 0.01,
-                bevelSize: 0.005,
+                bevelThickness: 0.02,
+                bevelSize: 0.01,
                 bevelOffset: 0,
                 bevelSegments: 5
             });
@@ -101,12 +148,23 @@ export class VRScoreUI {
                 metalness: 0.8,
                 roughness: 0.2,
                 emissive: 0x4099ff,
-                emissiveIntensity: 0.2
+                emissiveIntensity: 0.3
             });
 
             const titleMesh = new THREE.Mesh(titleGeometry, titleMaterial);
-            titleMesh.position.set(centerOffset, 2.8, 0);
+            titleMesh.position.set(centerOffset, 2.5, 0);
             this.scoreGroup.add(titleMesh);
+
+            // Add underline
+            const underlineGeometry = new THREE.PlaneGeometry(2, 0.05);
+            const underlineMaterial = new THREE.MeshBasicMaterial({
+                color: 0x4099ff,
+                transparent: true,
+                opacity: 0.8
+            });
+            const underline = new THREE.Mesh(underlineGeometry, underlineMaterial);
+            underline.position.set(0, 2.3, 0);
+            this.scoreGroup.add(underline);
         }
 
         // Create timer display
