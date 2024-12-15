@@ -176,8 +176,10 @@ export class UIManager {
         this.gameStarted = true;
         this.gameStartTime = Date.now();
         
-        // Create timer for host
-        this.createTimerDisplay();
+        // Hide start button in VR score UI
+        if (this.engine.scoreManager.vrScoreUI && this.engine.scoreManager.vrScoreUI.startButton) {
+            this.engine.scoreManager.vrScoreUI.startButton.visible = false;
+        }
         
         // Send start game event to all players
         if (this.engine.networkManager) {
@@ -193,36 +195,14 @@ export class UIManager {
         this.startGame();
     }
 
-    handleNetworkGameStart(data) {
-        if (this.gameStarted) return;
-        
-        this.gameStarted = true;
-        this.gameStartTime = data.startTime;
-        
-        // Create timer for clients
-        this.createTimerDisplay();
-        
-        // Start the game
-        this.startGame();
-    }
-
-    startGame() {
-        // Hide start button
-        if (this.startButton) {
-            this.startButton.visible = false;
-        }
-
-        // Start bird spawning
-        if (this.engine.birdManager) {
-            this.engine.birdManager.isSpawning = true;
-        }
-    }
-
     handleGameEnd() {
-        // Remove timer display
-        if (this.timerDisplay) {
-            this.engine.scene.remove(this.timerDisplay.mesh);
-            this.timerDisplay = null;
+        // Reset game state
+        this.gameStarted = false;
+        this.gameStartTime = 0;
+        
+        // Show start button in VR score UI
+        if (this.engine.scoreManager.vrScoreUI && this.engine.scoreManager.vrScoreUI.startButton) {
+            this.engine.scoreManager.vrScoreUI.startButton.visible = true;
         }
         
         // Stop bird spawning and remove all birds
@@ -239,17 +219,31 @@ export class UIManager {
                 type: 'gameEnd'
             });
         }
+    }
+
+    handleNetworkGameStart(data) {
+        if (this.gameStarted) return;
         
-        // Reset game state
-        this.gameStarted = false;
-        this.gameStartTime = 0;
+        this.gameStarted = true;
+        this.gameStartTime = data.startTime;
+        
+        // Hide start button in VR score UI
+        if (this.engine.scoreManager.vrScoreUI && this.engine.scoreManager.vrScoreUI.startButton) {
+            this.engine.scoreManager.vrScoreUI.startButton.visible = false;
+        }
+        
+        // Start the game
+        this.startGame();
     }
 
     handleNetworkGameEnd() {
-        // Remove timer
-        if (this.timerDisplay) {
-            this.engine.scene.remove(this.timerDisplay.mesh);
-            this.timerDisplay = null;
+        // Reset game state
+        this.gameStarted = false;
+        this.gameStartTime = 0;
+        
+        // Show start button in VR score UI
+        if (this.engine.scoreManager.vrScoreUI && this.engine.scoreManager.vrScoreUI.startButton) {
+            this.engine.scoreManager.vrScoreUI.startButton.visible = true;
         }
         
         // Stop bird spawning and remove all birds
@@ -259,10 +253,18 @@ export class UIManager {
                 this.engine.birdManager.removeBird(id);
             });
         }
-        
-        // Reset game state
-        this.gameStarted = false;
-        this.gameStartTime = 0;
+    }
+
+    startGame() {
+        // Hide start button
+        if (this.startButton) {
+            this.startButton.visible = false;
+        }
+
+        // Start bird spawning
+        if (this.engine.birdManager) {
+            this.engine.birdManager.isSpawning = true;
+        }
     }
 
     updateTimer() {

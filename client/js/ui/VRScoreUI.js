@@ -8,6 +8,8 @@ export class VRScoreUI {
         this.scoreGroup = new THREE.Group();
         this.font = null;
         this.textMeshes = new Map(); // playerId -> { text: mesh, background: mesh }
+        this.timerMesh = null;
+        this.startButton = null;
         this.loadFont();
     }
 
@@ -107,6 +109,12 @@ export class VRScoreUI {
             this.scoreGroup.add(titleMesh);
         }
 
+        // Create timer display
+        this.createTimerDisplay();
+
+        // Create start button
+        this.createStartButton();
+
         // Add to scene
         this.engine.scene.add(this.scoreGroup);
         
@@ -136,6 +144,93 @@ export class VRScoreUI {
         const texture = new THREE.CanvasTexture(canvas);
         texture.needsUpdate = true;
         return texture;
+    }
+
+    createTimerDisplay() {
+        // Create canvas for timer
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 128;
+        
+        // Create texture from canvas
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.MeshBasicMaterial({ 
+            map: texture,
+            transparent: true,
+            side: THREE.DoubleSide
+        });
+        
+        // Create mesh for timer display
+        const geometry = new THREE.PlaneGeometry(1.5, 0.75);
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(0, 1.8, 0.01); // Position below title, above scores
+        this.scoreGroup.add(mesh);
+        
+        // Store timer display properties
+        this.timerMesh = {
+            mesh: mesh,
+            texture: texture,
+            context: canvas.getContext('2d')
+        };
+    }
+
+    createStartButton() {
+        // Create button geometry
+        const geometry = new THREE.BoxGeometry(1.2, 0.6, 0.1);
+        
+        // Create materials for different button states
+        const materials = {
+            default: new THREE.MeshPhongMaterial({ 
+                color: 0x22cc22,
+                transparent: true,
+                opacity: 0.9
+            }),
+            hover: new THREE.MeshPhongMaterial({ 
+                color: 0x44ff44,
+                transparent: true,
+                opacity: 0.9
+            }),
+            pressed: new THREE.MeshPhongMaterial({ 
+                color: 0x118811,
+                transparent: true,
+                opacity: 0.9
+            })
+        };
+
+        // Create button mesh
+        this.startButton = new THREE.Mesh(geometry, materials.default);
+        this.startButton.position.set(0, -2, 0.05); // Position at bottom of panel
+        this.startButton.userData = {
+            type: 'button',
+            materials: materials,
+            isStartButton: true
+        };
+
+        // Create text as a separate mesh
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+        context.fillStyle = '#ffffff';
+        context.font = 'bold 128px Arial';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText('START', canvas.width/2, canvas.height/2);
+        
+        const textTexture = new THREE.CanvasTexture(canvas);
+        const textMaterial = new THREE.MeshBasicMaterial({
+            map: textTexture,
+            transparent: true,
+            side: THREE.DoubleSide
+        });
+        
+        const textGeometry = new THREE.PlaneGeometry(1, 0.5);
+        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+        textMesh.position.set(0, 0, 0.06); // Slightly in front of the button
+        this.startButton.add(textMesh);
+
+        // Add to scoreGroup
+        this.scoreGroup.add(this.startButton);
     }
 
     updatePlayerScore(playerId, score, rank) {
@@ -226,7 +321,77 @@ export class VRScoreUI {
         });
     }
 
+    updateTimer() {
+        if (!this.timerMesh || !this.engine.uiManager.gameStarted) return;
+        
+        const currentTime = Date.now();
+        const elapsedTime = currentTime - this.engine.uiManager.gameStartTime;
+        const remainingTime = Math.max(0, this.engine.uiManager.gameDuration - elapsedTime);
+        
+        // Convert to seconds and format
+        const seconds = Math.ceil(remainingTime / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        const timeText = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        
+        // Update canvas
+        const context = this.timerMesh.context;
+        context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+        context.fillStyle = '#ffffff';
+        context.font = 'bold 64px Arial';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(timeText, context.canvas.width/2, context.canvas.height/2);
+        
+        // Update texture
+        this.timerMesh.texture.needsUpdate = true;
+    }
+
     update() {
-        // Empty update method since we want the scoreboard to stay fixed
+        this.updateTimer();
+
+        // Check for start button interaction
+        if (this.startButton && !this.engine.uiManager.gameStarted) {
+            const controllers = this.engine.inputManager.controllers;
+            const session = this.engine.renderer.xr.getSession();
+            
+            if (!session) return;
+            
+            for (let i = 0; i < controllers.length; i++) {
+                const controller = controllers[i];
+                const inputSource = session.inputSources[i];
+                if (!inputSource) continue;
+                
+                const gamepad = inputSource.gamepad;
+                if (!gamepad) continue;
+
+                // Create temporary objects for raycasting
+                const tempMatrix = new THREE.Matrix4();
+                const raycaster = new THREE.Raycaster();
+                
+                tempMatrix.identity().extractRotation(controller.matrixWorld);
+                raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+                raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+                const intersects = raycaster.intersectObject(this.startButton);
+
+                if (intersects.length > 0) {
+                    this.startButton.material = this.startButton.userData.materials.hover;
+
+                    if (gamepad.buttons[0] && gamepad.buttons[0].pressed) {
+                        this.startButton.material = this.startButton.userData.materials.pressed;
+                        
+                        // Add haptic feedback
+                        if (gamepad.hapticActuators && gamepad.hapticActuators[0]) {
+                            gamepad.hapticActuators[0].pulse(1.0, 100);
+                        }
+                        
+                        this.engine.uiManager.handleGameStart();
+                    }
+                } else {
+                    this.startButton.material = this.startButton.userData.materials.default;
+                }
+            }
+        }
     }
 }
