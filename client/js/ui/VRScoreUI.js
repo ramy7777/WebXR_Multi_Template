@@ -7,7 +7,7 @@ export class VRScoreUI {
         this.engine = engine;
         this.scoreGroup = new THREE.Group();
         this.font = null;
-        this.textMeshes = new Map(); // playerId -> { text: mesh, background: mesh }
+        this.textMeshes = new Map(); // playerId -> { text: mesh, outline: mesh }
         this.timerMesh = null;
         this.startButton = null;
         this.loadFont();
@@ -17,7 +17,7 @@ export class VRScoreUI {
         const loader = new FontLoader();
         try {
             this.font = await new Promise((resolve, reject) => {
-                loader.load('https://threejs.org/examples/fonts/droid/droid_sans_regular.typeface.json', 
+                loader.load('https://threejs.org/examples/fonts/optimer_bold.typeface.json', 
                     resolve, 
                     undefined, 
                     reject
@@ -296,9 +296,14 @@ export class VRScoreUI {
 
         // Remove existing score display if any
         if (this.textMeshes.has(playerId)) {
-            const { text, background } = this.textMeshes.get(playerId);
-            this.scoreGroup.remove(text);
-            this.scoreGroup.remove(background);
+            const display = this.textMeshes.get(playerId);
+            this.scoreGroup.remove(display.text);
+            this.scoreGroup.remove(display.outline);
+            display.text.geometry.dispose();
+            display.text.material.dispose();
+            display.outline.geometry.dispose();
+            display.outline.material.dispose();
+            this.textMeshes.delete(playerId);
         }
 
         // Calculate vertical position
@@ -306,67 +311,72 @@ export class VRScoreUI {
         const spacing = 0.45; // Space between each entry
         const yPosition = startY - (rank * spacing);
 
-        // Create background for this score entry
-        const bgGeometry = new THREE.PlaneGeometry(3.6, 0.4);
-        const isLocalPlayer = this.engine.playerManager?.localPlayer?.id === playerId;
-        
-        // Simplified background colors
-        const bgColor = isLocalPlayer ? 
-            new THREE.Color(0x4099ff).multiplyScalar(0.15) : 
-            new THREE.Color(0x333333).multiplyScalar(0.5);
-
-        const bgMaterial = new THREE.MeshBasicMaterial({
-            color: bgColor,
-            transparent: true,
-            opacity: 0.6,
-            side: THREE.DoubleSide
-        });
-
-        const background = new THREE.Mesh(bgGeometry, bgMaterial);
-        background.position.set(0, yPosition, 0.01);
-        this.scoreGroup.add(background);
-
         // Create text for this score entry
+        const isLocalPlayer = playerId === this.engine.playerManager.localPlayer.id;
         const playerText = isLocalPlayer ? 'You' : `Player ${playerId}`;
         const scoreText = `${rank + 1}. ${playerText}: ${score}`;
-        const textGeometry = new TextGeometry(scoreText, {
+
+        // Create outline text (slightly larger, black)
+        const outlineGeometry = new TextGeometry(scoreText, {
             font: this.font,
-            size: 0.22,
+            size: 0.23, // Slightly larger for outline
             height: 0,
             curveSegments: 12,
             bevelEnabled: false
         });
 
-        // Simple white text for all entries
-        const textMaterial = new THREE.MeshBasicMaterial({ 
-            color: 0xffffff,
+        const outlineMaterial = new THREE.MeshBasicMaterial({
+            color: 0x000000,
             transparent: true,
-            opacity: 0.9
+            opacity: 1.0
+        });
+
+        const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial);
+        
+        // Create main text
+        const textGeometry = new TextGeometry(scoreText, {
+            font: this.font,
+            size: 0.225,
+            height: 0,
+            curveSegments: 12,
+            bevelEnabled: false
+        });
+
+        // Brighter colors for better visibility
+        const textColor = isLocalPlayer ? 0x00ffff : 0xccffff; // Cyan for local player, bright white for others
+        const textMaterial = new THREE.MeshBasicMaterial({ 
+            color: textColor,
+            transparent: true,
+            opacity: 1.0
         });
 
         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
         
-        // Center the text horizontally
-        textGeometry.computeBoundingBox();
-        const centerOffset = -(textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x) / 2;
+        // Center both meshes
+        outlineGeometry.computeBoundingBox();
+        const centerOffset = -(outlineGeometry.boundingBox.max.x - outlineGeometry.boundingBox.min.x) / 2;
         
-        // Position text slightly in front of background
+        // Position both meshes
+        outlineMesh.position.set(centerOffset, yPosition, 0.019); // Slightly behind main text
         textMesh.position.set(centerOffset, yPosition, 0.02);
+        
+        // Add both meshes to the scene
+        this.scoreGroup.add(outlineMesh);
         this.scoreGroup.add(textMesh);
 
         // Store references to both meshes
-        this.textMeshes.set(playerId, { text: textMesh, background: background });
+        this.textMeshes.set(playerId, { text: textMesh, outline: outlineMesh });
     }
 
     removePlayer(playerId) {
         if (this.textMeshes.has(playerId)) {
             const display = this.textMeshes.get(playerId);
             this.scoreGroup.remove(display.text);
-            this.scoreGroup.remove(display.background);
+            this.scoreGroup.remove(display.outline);
             display.text.geometry.dispose();
             display.text.material.dispose();
-            display.background.geometry.dispose();
-            display.background.material.dispose();
+            display.outline.geometry.dispose();
+            display.outline.material.dispose();
             this.textMeshes.delete(playerId);
             
             // Reposition remaining scores
@@ -383,9 +393,9 @@ export class VRScoreUI {
             const display = this.textMeshes.get(playerId);
             const yPosition = startY - (index * spacing);
             
-            // Update both text and background positions
+            // Update both text and outline positions
             display.text.position.y = yPosition;
-            display.background.position.y = yPosition;
+            display.outline.position.y = yPosition;
         });
     }
 
@@ -405,11 +415,24 @@ export class VRScoreUI {
         // Update canvas
         const context = this.timerMesh.context;
         context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-        context.fillStyle = '#ffffff';
-        context.font = 'bold 96px Arial'; // Larger font for better visibility
+        
+        // Add text shadow for outline effect
+        context.shadowColor = 'black';
+        context.shadowBlur = 4;
+        context.shadowOffsetX = 2;
+        context.shadowOffsetY = 2;
+        
+        context.fillStyle = '#00ffff'; // Cyan color to match player text
+        context.font = 'bold 96px optimer'; // Using the same font family
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         context.fillText(timeText, context.canvas.width/2, context.canvas.height/2);
+        
+        // Reset shadow for clean rendering
+        context.shadowColor = 'transparent';
+        context.shadowBlur = 0;
+        context.shadowOffsetX = 0;
+        context.shadowOffsetY = 0;
         
         // Update texture
         this.timerMesh.texture.needsUpdate = true;
