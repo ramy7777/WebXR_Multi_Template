@@ -28,12 +28,13 @@ export class VRScoreUI {
     }
 
     initializeUI() {
-        // Position the score panel in a fixed position in the VR world
-        this.scoreGroup.position.set(0, 2.5, -3); // Above and in front of the initial spawn point
-        this.scoreGroup.rotation.x = -0.2; // Slight tilt for better visibility
+        // Position the score panel on the left wall
+        const roomWidth = 40; // Match the room dimensions from World.js
+        this.scoreGroup.position.set(-roomWidth/2 + 0.1, 4, 0); // Slightly off the wall
+        this.scoreGroup.rotation.y = Math.PI/2; // Rotate to face into the room
 
         // Add main background panel with gradient effect
-        const mainPanelGeometry = new THREE.PlaneGeometry(2.2, 2);
+        const mainPanelGeometry = new THREE.PlaneGeometry(4, 6); // Larger panel for wall display
         const gradientTexture = this.createGradientTexture();
         const mainPanelMaterial = new THREE.MeshBasicMaterial({ 
             map: gradientTexture,
@@ -46,7 +47,7 @@ export class VRScoreUI {
         this.scoreGroup.add(mainPanel);
 
         // Add glow effect
-        const glowGeometry = new THREE.PlaneGeometry(2.3, 2.1);
+        const glowGeometry = new THREE.PlaneGeometry(4.2, 6.2);
         const glowMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 color: { value: new THREE.Color(0x4099ff) },
@@ -80,7 +81,7 @@ export class VRScoreUI {
         if (this.font) {
             const titleGeometry = new TextGeometry('LEADERBOARD', {
                 font: this.font,
-                size: 0.15,
+                size: 0.3, // Larger text for wall display
                 height: 0.02,
                 curveSegments: 12,
                 bevelEnabled: true,
@@ -102,7 +103,7 @@ export class VRScoreUI {
             });
 
             const titleMesh = new THREE.Mesh(titleGeometry, titleMaterial);
-            titleMesh.position.set(centerOffset, 0.8, 0);
+            titleMesh.position.set(centerOffset, 2.8, 0);
             this.scoreGroup.add(titleMesh);
         }
 
@@ -149,7 +150,7 @@ export class VRScoreUI {
 
         // Create background for this score entry
         const isLocalPlayer = this.engine.playerManager?.localPlayer?.id === playerId;
-        const bgGeometry = new THREE.PlaneGeometry(1.8, 0.15);
+        const bgGeometry = new THREE.PlaneGeometry(3.6, 0.4); // Larger background for wall display
         
         let bgColor;
         if (rank === 0) bgColor = new THREE.Color(0xFFD700).multiplyScalar(0.15);
@@ -165,7 +166,7 @@ export class VRScoreUI {
         });
 
         const background = new THREE.Mesh(bgGeometry, bgMaterial);
-        background.position.y = 0.6 - (rank * 0.2);
+        background.position.y = 2.5 - (rank * 0.5);
         background.position.z = 0.01;
         this.scoreGroup.add(background);
 
@@ -174,7 +175,7 @@ export class VRScoreUI {
         const scoreText = `#${rank + 1}  ${playerText}: ${score}`;
         const textGeometry = new TextGeometry(scoreText, {
             font: this.font,
-            size: 0.1,
+            size: 0.25, // Larger text for wall display
             height: 0.01,
             curveSegments: 12,
             bevelEnabled: false
@@ -192,7 +193,7 @@ export class VRScoreUI {
         textGeometry.computeBoundingBox();
         const centerOffset = -(textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x) / 2;
         
-        textMesh.position.set(centerOffset, 0.6 - (rank * 0.2), 0.02);
+        textMesh.position.set(centerOffset, 2.5 - (rank * 0.5), 0.02); // Adjusted vertical spacing
         this.scoreGroup.add(textMesh);
 
         // Store references to both meshes
@@ -219,7 +220,7 @@ export class VRScoreUI {
         const players = Array.from(this.textMeshes.keys());
         players.forEach((playerId, index) => {
             const display = this.textMeshes.get(playerId);
-            const yPosition = 0.6 - (index * 0.2);
+            const yPosition = 2.5 - (index * 0.5);
             display.text.position.y = yPosition;
             display.background.position.y = yPosition;
         });
