@@ -17,7 +17,7 @@ export class VRScoreUI {
         const loader = new FontLoader();
         try {
             this.font = await new Promise((resolve, reject) => {
-                loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', 
+                loader.load('https://threejs.org/examples/fonts/droid/droid_sans_regular.typeface.json', 
                     resolve, 
                     undefined, 
                     reject
@@ -301,52 +301,57 @@ export class VRScoreUI {
             this.scoreGroup.remove(background);
         }
 
+        // Calculate vertical position
+        const startY = 1.8; // Start below the title
+        const spacing = 0.45; // Space between each entry
+        const yPosition = startY - (rank * spacing);
+
         // Create background for this score entry
+        const bgGeometry = new THREE.PlaneGeometry(3.6, 0.4);
         const isLocalPlayer = this.engine.playerManager?.localPlayer?.id === playerId;
-        const bgGeometry = new THREE.PlaneGeometry(3.6, 0.4); // Larger background for wall display
         
-        let bgColor;
-        if (rank === 0) bgColor = new THREE.Color(0xFFD700).multiplyScalar(0.15);
-        else if (rank === 1) bgColor = new THREE.Color(0xC0C0C0).multiplyScalar(0.15);
-        else if (rank === 2) bgColor = new THREE.Color(0xCD7F32).multiplyScalar(0.15);
-        else bgColor = isLocalPlayer ? new THREE.Color(0x4099ff).multiplyScalar(0.15) : new THREE.Color(0xffffff).multiplyScalar(0.03);
+        // Simplified background colors
+        const bgColor = isLocalPlayer ? 
+            new THREE.Color(0x4099ff).multiplyScalar(0.15) : 
+            new THREE.Color(0x333333).multiplyScalar(0.5);
 
         const bgMaterial = new THREE.MeshBasicMaterial({
             color: bgColor,
             transparent: true,
-            opacity: 0.8,
+            opacity: 0.6,
             side: THREE.DoubleSide
         });
 
         const background = new THREE.Mesh(bgGeometry, bgMaterial);
-        background.position.y = 2.5 - (rank * 0.5);
-        background.position.z = 0.01;
+        background.position.set(0, yPosition, 0.01);
         this.scoreGroup.add(background);
 
         // Create text for this score entry
         const playerText = isLocalPlayer ? 'You' : `Player ${playerId}`;
-        const scoreText = `#${rank + 1}  ${playerText}: ${score}`;
+        const scoreText = `${rank + 1}. ${playerText}: ${score}`;
         const textGeometry = new TextGeometry(scoreText, {
             font: this.font,
-            size: 0.25, // Larger text for wall display
-            height: 0.01,
+            size: 0.22,
+            height: 0,
             curveSegments: 12,
             bevelEnabled: false
         });
 
-        let textColor;
-        if (rank === 0) textColor = 0xFFD700;
-        else if (rank === 1) textColor = 0xC0C0C0;
-        else if (rank === 2) textColor = 0xCD7F32;
-        else textColor = isLocalPlayer ? 0x4099ff : 0xffffff;
+        // Simple white text for all entries
+        const textMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.9
+        });
 
-        const textMaterial = new THREE.MeshBasicMaterial({ color: textColor });
         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
         
+        // Center the text horizontally
         textGeometry.computeBoundingBox();
         const centerOffset = -(textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x) / 2;
         
-        textMesh.position.set(centerOffset, 2.5 - (rank * 0.5), 0.02); // Adjusted vertical spacing
+        // Position text slightly in front of background
+        textMesh.position.set(centerOffset, yPosition, 0.02);
         this.scoreGroup.add(textMesh);
 
         // Store references to both meshes
@@ -370,10 +375,15 @@ export class VRScoreUI {
     }
 
     repositionScores() {
+        const startY = 1.8;
+        const spacing = 0.45;
+        
         const players = Array.from(this.textMeshes.keys());
         players.forEach((playerId, index) => {
             const display = this.textMeshes.get(playerId);
-            const yPosition = 2.5 - (index * 0.5);
+            const yPosition = startY - (index * spacing);
+            
+            // Update both text and background positions
             display.text.position.y = yPosition;
             display.background.position.y = yPosition;
         });
