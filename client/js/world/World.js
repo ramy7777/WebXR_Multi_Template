@@ -127,7 +127,6 @@ export class World {
         const roomWidth = 5;
         const roomHeight = 3;
         const roomDepth = 3;
-        const gridDivisions = 20;
         const roomY = 2; // 2 meters above floor level
 
         // Create grid material with custom shader for holographic effect
@@ -158,6 +157,11 @@ export class World {
                     return max(lines.x, lines.y) * 0.5;
                 }
                 
+                float getBorder(vec2 uv, float thickness) {
+                    vec2 border = step(thickness, uv) * step(thickness, 1.0 - uv);
+                    return 1.0 - (border.x * border.y);
+                }
+                
                 void main() {
                     // Create multiple grid layers
                     float grid1 = getGrid(vUv, 10.0); // Large grid
@@ -169,18 +173,21 @@ export class World {
                     // Add subtle pulse effect
                     float pulse = sin(time * 2.0) * 0.1 + 0.9;
                     
-                    // Add distance fade
+                    // Add distance fade but preserve edges
                     float edgeFade = 1.0 - max(
                         abs(vUv.x - 0.5) * 2.0,
                         abs(vUv.y - 0.5) * 2.0
                     );
                     edgeFade = smoothstep(0.0, 0.3, edgeFade);
                     
+                    // Add sharp border
+                    float border = getBorder(vUv, 0.02);
+                    
                     // Calculate final alpha
-                    float alpha = gridPattern * pulse * edgeFade * 0.3;
+                    float alpha = (gridPattern * pulse * edgeFade * 0.3) + border * 0.8;
                     
                     // Output final color with glow
-                    vec3 glowColor = color + vec3(0.2) * gridPattern;
+                    vec3 glowColor = color + vec3(0.2) * gridPattern + vec3(0.5) * border;
                     gl_FragColor = vec4(glowColor, alpha);
                 }
             `,
@@ -192,27 +199,24 @@ export class World {
 
         // Create room faces
         const faces = [
-            new THREE.PlaneGeometry(roomWidth, roomHeight),
-            new THREE.PlaneGeometry(roomWidth, roomHeight),
-            new THREE.PlaneGeometry(roomDepth, roomHeight),
-            new THREE.PlaneGeometry(roomDepth, roomHeight),
-            new THREE.PlaneGeometry(roomWidth, roomDepth)
+            new THREE.PlaneGeometry(roomWidth, roomHeight), // Front
+            new THREE.PlaneGeometry(roomWidth, roomHeight), // Back
+            new THREE.PlaneGeometry(roomWidth, roomDepth),  // Bottom
+            new THREE.PlaneGeometry(roomWidth, roomDepth)   // Top
         ];
 
         const positions = [
-            [0, 0, roomDepth/2 + 0.001],
-            [0, 0, -roomDepth/2 - 0.001],
-            [-roomWidth/2 - 0.001, 0, 0],
-            [roomWidth/2 + 0.001, 0, 0],
-            [0, roomHeight/2 + 0.001, 0]
+            [0, 0, roomDepth/2 + 0.001],           // Front
+            [0, 0, -roomDepth/2 - 0.001],          // Back
+            [0, -roomHeight/2, 0],                 // Bottom
+            [0, roomHeight/2 + 0.001, 0]           // Top
         ];
 
         const rotations = [
-            [0, 0, 0],
-            [0, Math.PI, 0],
-            [0, -Math.PI/2, 0],
-            [0, Math.PI/2, 0],
-            [-Math.PI/2, 0, 0]
+            [0, 0, 0],                     // Front
+            [0, Math.PI, 0],               // Back
+            [Math.PI/2, 0, 0],             // Bottom
+            [-Math.PI/2, 0, 0]             // Top
         ];
 
         // Create room group
@@ -229,13 +233,53 @@ export class World {
             roomGroup.add(mesh);
         });
 
+        // Create edge lines
+        const edges = [
+            // Vertical edges
+            { start: [-roomWidth/2, -roomHeight/2, roomDepth/2], end: [-roomWidth/2, roomHeight/2, roomDepth/2] },
+            { start: [roomWidth/2, -roomHeight/2, roomDepth/2], end: [roomWidth/2, roomHeight/2, roomDepth/2] },
+            { start: [-roomWidth/2, -roomHeight/2, -roomDepth/2], end: [-roomWidth/2, roomHeight/2, -roomDepth/2] },
+            { start: [roomWidth/2, -roomHeight/2, -roomDepth/2], end: [roomWidth/2, roomHeight/2, -roomDepth/2] },
+            
+            // Horizontal edges - Top
+            { start: [-roomWidth/2, roomHeight/2, roomDepth/2], end: [roomWidth/2, roomHeight/2, roomDepth/2] },
+            { start: [-roomWidth/2, roomHeight/2, -roomDepth/2], end: [roomWidth/2, roomHeight/2, -roomDepth/2] },
+            { start: [-roomWidth/2, roomHeight/2, roomDepth/2], end: [-roomWidth/2, roomHeight/2, -roomDepth/2] },
+            { start: [roomWidth/2, roomHeight/2, roomDepth/2], end: [roomWidth/2, roomHeight/2, -roomDepth/2] },
+            
+            // Horizontal edges - Bottom
+            { start: [-roomWidth/2, -roomHeight/2, roomDepth/2], end: [roomWidth/2, -roomHeight/2, roomDepth/2] },
+            { start: [-roomWidth/2, -roomHeight/2, -roomDepth/2], end: [roomWidth/2, -roomHeight/2, -roomDepth/2] },
+            { start: [-roomWidth/2, -roomHeight/2, roomDepth/2], end: [-roomWidth/2, -roomHeight/2, -roomDepth/2] },
+            { start: [roomWidth/2, -roomHeight/2, roomDepth/2], end: [roomWidth/2, -roomHeight/2, -roomDepth/2] }
+        ];
+
+        const edgeMaterial = new THREE.LineBasicMaterial({
+            color: 0x00ffff,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+
+        edges.forEach(edge => {
+            const geometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(...edge.start),
+                new THREE.Vector3(...edge.end)
+            ]);
+            const line = new THREE.Line(geometry, edgeMaterial);
+            line.renderOrder = 2;
+            roomGroup.add(line);
+        });
+
         this.engine.scene.add(roomGroup);
         this.holographicRoom = roomGroup;
 
         // Add animation to update shader time
         this.engine.animationManager.addAnimation(() => {
             roomGroup.children.forEach(mesh => {
-                mesh.material.uniforms.time.value = this.clock.getElapsedTime();
+                if (mesh.material.uniforms) {
+                    mesh.material.uniforms.time.value = this.clock.getElapsedTime();
+                }
             });
         });
     }
