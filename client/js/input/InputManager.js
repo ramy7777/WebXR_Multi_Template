@@ -6,6 +6,14 @@ export class InputManager {
         this.engine = engine;
         this.xrSession = null;
 
+        // Mouse state
+        this.mouse = new THREE.Vector2();
+        this.mouseButtons = {
+            left: false,
+            middle: false,
+            right: false
+        };
+
         // Controller settings from documentation
         this.deadzone = 0.2;           // Thumbstick deadzone
         this.moveSpeed = 0.1;          // Movement speed
@@ -13,11 +21,6 @@ export class InputManager {
         this.snapAngle = 45;           // Degrees
         this.rotationCooldown = false;
         this.rotationCooldownTime = 400; // ms
-
-        // Mouse state for PC shooting
-        this.mousePressed = false;
-        this.lastMouseClick = 0;
-        this.mouseClickCooldown = 250; // ms between shots
 
         // Meta Quest 3 Button Mapping
         this.QUEST3_MAPPING = {
@@ -50,16 +53,23 @@ export class InputManager {
         window.addEventListener('keydown', (e) => this.onKeyDown(e));
         window.addEventListener('keyup', (e) => this.onKeyUp(e));
 
-        // Setup mouse controls for PC shooting
+        // Setup mouse controls
+        document.addEventListener('mousemove', (event) => {
+            this.mouse.x = event.clientX;
+            this.mouse.y = event.clientY;
+        });
+        
         document.addEventListener('mousedown', (event) => {
             if (event.button === 0) { // Left click
+                this.mouseButtons.left = true;
                 this.mousePressed = true;
                 this.handlePCShoot();
             }
         });
         
         document.addEventListener('mouseup', (event) => {
-            if (event.button === 0) {
+            if (event.button === 0) { // Left click
+                this.mouseButtons.left = false;
                 this.mousePressed = false;
             }
         });

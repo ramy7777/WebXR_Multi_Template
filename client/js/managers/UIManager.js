@@ -20,16 +20,19 @@ export class UIManager {
     handleGameStart() {
         if (this.gameStarted) return;
         
+        console.log('[GAME_START] Starting game...');
         this.gameStarted = true;
         this.gameStartTime = Date.now();
         
         // Hide start button in VR score UI
         if (this.engine.scoreManager.vrScoreUI && this.engine.scoreManager.vrScoreUI.startButton) {
+            console.log('[GAME_START] Hiding start button');
             this.engine.scoreManager.vrScoreUI.startButton.visible = false;
         }
         
         // Send start game event to all players
         if (this.engine.networkManager) {
+            console.log('[GAME_START] Sending start game event to network');
             this.engine.networkManager.send({
                 type: 'gameStart',
                 data: {
@@ -39,6 +42,7 @@ export class UIManager {
         }
 
         // Start the game locally
+        console.log('[GAME_START] Starting local game');
         this.startGame();
     }
 
@@ -105,6 +109,7 @@ export class UIManager {
     startGame() {
         // Start bird spawning
         if (this.engine.birdManager) {
+            console.log('[GAME_START] Starting bird spawning');
             this.engine.birdManager.isSpawning = true;
         }
     }
