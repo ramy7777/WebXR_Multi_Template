@@ -118,6 +118,126 @@ export class World {
         glowRing.position.y = 0.02;
         this.engine.scene.add(glowRing);
         this.objects.add(glowRing);
+
+        // Create holographic room
+        this.createHolographicRoom();
+    }
+
+    createHolographicRoom() {
+        const roomWidth = 5;
+        const roomHeight = 3;
+        const roomDepth = 3;
+        const gridDivisions = 20;
+        const roomY = 2; // 2 meters above floor level
+
+        // Create grid material with custom shader for holographic effect
+        const gridMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 0 },
+                color: { value: new THREE.Color(0x00ffff) }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                varying vec3 vPosition;
+                void main() {
+                    vUv = uv;
+                    vPosition = position;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float time;
+                uniform vec3 color;
+                varying vec2 vUv;
+                varying vec3 vPosition;
+                
+                float getGrid(vec2 uv, float size) {
+                    vec2 grid = abs(fract(uv * size) - 0.5) * 2.0;
+                    float lineWidth = 0.05;
+                    vec2 lines = smoothstep(1.0 - lineWidth, 1.0, grid);
+                    return max(lines.x, lines.y) * 0.5;
+                }
+                
+                void main() {
+                    // Create multiple grid layers
+                    float grid1 = getGrid(vUv, 10.0); // Large grid
+                    float grid2 = getGrid(vUv, 50.0) * 0.5; // Fine grid
+                    
+                    // Combine grids
+                    float gridPattern = grid1 + grid2;
+                    
+                    // Add subtle pulse effect
+                    float pulse = sin(time * 2.0) * 0.1 + 0.9;
+                    
+                    // Add distance fade
+                    float edgeFade = 1.0 - max(
+                        abs(vUv.x - 0.5) * 2.0,
+                        abs(vUv.y - 0.5) * 2.0
+                    );
+                    edgeFade = smoothstep(0.0, 0.3, edgeFade);
+                    
+                    // Calculate final alpha
+                    float alpha = gridPattern * pulse * edgeFade * 0.3;
+                    
+                    // Output final color with glow
+                    vec3 glowColor = color + vec3(0.2) * gridPattern;
+                    gl_FragColor = vec4(glowColor, alpha);
+                }
+            `,
+            transparent: true,
+            side: THREE.FrontSide,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+        });
+
+        // Create room faces
+        const faces = [
+            new THREE.PlaneGeometry(roomWidth, roomHeight),
+            new THREE.PlaneGeometry(roomWidth, roomHeight),
+            new THREE.PlaneGeometry(roomDepth, roomHeight),
+            new THREE.PlaneGeometry(roomDepth, roomHeight),
+            new THREE.PlaneGeometry(roomWidth, roomDepth)
+        ];
+
+        const positions = [
+            [0, 0, roomDepth/2 + 0.001],
+            [0, 0, -roomDepth/2 - 0.001],
+            [-roomWidth/2 - 0.001, 0, 0],
+            [roomWidth/2 + 0.001, 0, 0],
+            [0, roomHeight/2 + 0.001, 0]
+        ];
+
+        const rotations = [
+            [0, 0, 0],
+            [0, Math.PI, 0],
+            [0, -Math.PI/2, 0],
+            [0, Math.PI/2, 0],
+            [-Math.PI/2, 0, 0]
+        ];
+
+        // Create room group
+        const roomGroup = new THREE.Group();
+        roomGroup.position.y = roomY;
+
+        // Create each face with its own material instance
+        faces.forEach((geometry, index) => {
+            const faceMaterial = gridMaterial.clone();
+            const mesh = new THREE.Mesh(geometry, faceMaterial);
+            mesh.position.set(...positions[index]);
+            mesh.rotation.set(...rotations[index]);
+            mesh.renderOrder = index + 1;
+            roomGroup.add(mesh);
+        });
+
+        this.engine.scene.add(roomGroup);
+        this.holographicRoom = roomGroup;
+
+        // Add animation to update shader time
+        this.engine.animationManager.addAnimation(() => {
+            roomGroup.children.forEach(mesh => {
+                mesh.material.uniforms.time.value = this.clock.getElapsedTime();
+            });
+        });
     }
 
     addGlowingEdges() {
