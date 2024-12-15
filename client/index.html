@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebXR Multiverse</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-family: Arial, sans-serif;
+            pointer-events: none;
+            text-shadow: 1px 1px 1px black;
+        }
+        #vrStatus {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-shadow: 1px 1px 1px black;
+        }
+        .error { color: #ff4444; }
+        .success { color: #44ff44; }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            width: 100%;
+        }
+        .button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            flex: 1;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        #roomCode {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            flex: 2;
+        }
+    </style>
+</head>
+<body>
+    <div id="sessionUI">
+        <h2>WebXR Multiverse</h2>
+        <div id="mainMenu">
+            <div class="button-group">
+                <button id="hostButton" class="button">Host Session</button>
+                <button id="quickJoinButton" class="button">Quick Join</button>
+            </div>
+            <div style="margin: 20px 0;">- or -</div>
+            <div class="button-group">
+                <input type="text" id="roomCode" placeholder="Enter Room Code" maxlength="6">
+                <button id="joinButton" class="button">Join Session</button>
+            </div>
+        </div>
+        <div id="status"></div>
+        <div id="error"></div>
+    </div>
+    <div id="info">
+        WebXR Multiverse<br>
+        Desktop Controls: WASD to move, Space/Shift for up/down, Mouse to look
+    </div>
+    <div id="vrStatus"></div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.159.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.159.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module">
+        import { Engine } from './js/core/Engine.js';
+        
+        async function checkVRSupport() {
+            const vrStatus = document.getElementById('vrStatus');
+            
+            try {
+                if (!navigator.xr) {
+                    throw new Error('WebXR not available');
+                }
+
+                // Check if VR is supported
+                const isSupported = await navigator.xr.isSessionSupported('immersive-vr');
+                if (!isSupported) {
+                    throw new Error('VR not supported');
+                }
+
+                vrStatus.className = 'success';
+                vrStatus.textContent = 'VR Ready - Click "Enter VR" to begin';
+                return true;
+            } catch (err) {
+                console.error('VR Support check failed:', err);
+                vrStatus.className = 'error';
+                vrStatus.textContent = `VR Error: ${err.message}`;
+                return false;
+            }
+        }
+
+        // Start the application
+        async function init() {
+            await checkVRSupport();
+            const engine = new Engine();
+            engine.start();
+
+            // Add error handler for XR session errors
+            window.addEventListener('vrdisplayactivate', () => {
+                console.log('VR Display Activated');
+            });
+
+            window.addEventListener('vrdisplaydeactivate', () => {
+                console.log('VR Display Deactivated');
+            });
+
+            window.addEventListener('vrdisplayconnect', () => {
+                console.log('VR Display Connected');
+                checkVRSupport();
+            });
+
+            window.addEventListener('vrdisplaydisconnect', () => {
+                console.log('VR Display Disconnected');
+                checkVRSupport();
+            });
+        }
+
+        // Initialize when the page loads
+        init().catch(console.error);
+    </script>
+</body>
+</html>

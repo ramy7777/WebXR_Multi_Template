@@ -1,0 +1,22 @@
+{
+  "name": "webxr-multiverse",
+  "version": "1.0.0",
+  "description": "A WebXR-based multiplayer virtual reality experience",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "nodemon server/server.js"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "ws": "^8.2.3",
+    "uuid": "^9.0.0",
+    "three": "^0.158.0",
+    "ip": "^2.0.1",
+    "selfsigned": "^2.4.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "vite": "^5.0.8"
+  }
+}
