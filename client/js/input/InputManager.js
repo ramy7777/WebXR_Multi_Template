@@ -62,7 +62,6 @@ export class InputManager {
         document.addEventListener('mousedown', (event) => {
             if (event.button === 0) { // Left click
                 this.mouseButtons.left = true;
-                this.mousePressed = true;
                 this.handlePCShoot();
             }
         });
@@ -70,7 +69,6 @@ export class InputManager {
         document.addEventListener('mouseup', (event) => {
             if (event.button === 0) { // Left click
                 this.mouseButtons.left = false;
-                this.mousePressed = false;
             }
         });
 
@@ -161,10 +159,6 @@ export class InputManager {
     update(delta, frame) {
         // Only update controllers in VR mode
         if (!this.engine.renderer.xr.isPresenting) {
-            // Handle PC shooting with cooldown
-            if (this.mousePressed) {
-                this.handlePCShoot();
-            }
             this.updateKeyboardInput(delta);
             return;
         }
