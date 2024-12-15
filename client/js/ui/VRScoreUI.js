@@ -163,7 +163,7 @@ export class VRScoreUI {
         // Create mesh for timer display
         const geometry = new THREE.PlaneGeometry(1.5, 0.75);
         const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(0, 1.8, 0.01); // Position below title, above scores
+        mesh.position.set(0, -2.8, 0.01); // Position at bottom of panel, below start button
         this.scoreGroup.add(mesh);
         
         // Store timer display properties
@@ -338,7 +338,7 @@ export class VRScoreUI {
         const context = this.timerMesh.context;
         context.clearRect(0, 0, context.canvas.width, context.canvas.height);
         context.fillStyle = '#ffffff';
-        context.font = 'bold 64px Arial';
+        context.font = 'bold 96px Arial'; // Larger font for better visibility
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         context.fillText(timeText, context.canvas.width/2, context.canvas.height/2);
