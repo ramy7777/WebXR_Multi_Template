@@ -79,13 +79,13 @@ export class BulletManager {
             const triggerButton = gamepad.buttons[this.QUEST3_MAPPING.buttons.trigger];
 
             if (triggerButton.pressed && !this.lastTriggerState[i]) {
-                this.createBullet(controller, null, 2.0); // Increased bullet speed to 2.0
+                this.createBullet(controller, null, 0.3); // Changed from 2.0 to 0.3 to match Bullet.js
             }
             this.lastTriggerState[i] = triggerButton.pressed;
         });
     }
 
-    createBullet(controllerOrPosition, optionalDirection, speed = 1.0) {
+    createBullet(controllerOrPosition, optionalDirection, speed = 0.3) { // Changed default from 1.0 to 0.3
         let position, direction;
 
         if (controllerOrPosition instanceof THREE.Vector3) {

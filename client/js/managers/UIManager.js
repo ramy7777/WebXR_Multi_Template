@@ -75,6 +75,7 @@ export class UIManager {
     handleNetworkGameStart(data) {
         if (this.gameStarted) return;
         
+        console.log('[GAME_START] Received network game start');
         this.gameStarted = true;
         this.gameStartTime = data.startTime;
         

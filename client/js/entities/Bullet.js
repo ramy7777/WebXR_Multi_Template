@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export class Bullet extends THREE.Object3D {
-    constructor(position, direction, speed = 1.0, lifespan = 2000) {
+    constructor(position, direction, speed = 0.3, lifespan = 2000) {
         super();
         
         // Create bullet mesh
@@ -28,12 +28,6 @@ export class Bullet extends THREE.Object3D {
         const up = new THREE.Vector3(0, 1, 0);
         quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), this.direction);
         this.setRotationFromQuaternion(quaternion);
-
-        console.log('Bullet created:', {
-            position: this.position.toArray(),
-            direction: this.direction.toArray(),
-            speed: this.speed
-        });
     }
 
     update() {
@@ -47,7 +41,6 @@ export class Bullet extends THREE.Object3D {
         // Check if bullet should be destroyed
         const age = Date.now() - this.creationTime;
         if (age > this.lifespan) {
-            console.log('Bullet destroyed after', age, 'ms');
             return true; // Should be removed
         }
         return false;

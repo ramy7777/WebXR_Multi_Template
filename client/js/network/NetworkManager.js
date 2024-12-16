@@ -189,6 +189,11 @@ export class NetworkManager {
                 this.engine.birdManager.handleBirdKilled(data.data);
                 break;
 
+            case 'birdHit':
+                console.debug('[DEBUG] Received bird hit message:', data);
+                this.engine.birdManager.handleNetworkBirdHit(data.data);
+                break;
+
             case 'gameStart':
                 console.debug('[DEBUG] Received game start message:', data);
                 this.engine.handleNetworkMessage(data, data.senderId);
