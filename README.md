@@ -25,7 +25,20 @@ A complete template for building WebXR multiplayer games using Three.js and WebS
 - Physics-based interactions
 - Haptic feedback support
 
-### 3. Scoring System
+### 3. Audio System
+- Spatial audio with Three.js AudioListener
+- Network-synchronized sound effects:
+  - Shooting sounds
+  - Hit feedback
+  - Environmental ambience
+- Voice chat functionality:
+  - Push-to-talk option
+  - Room-based voice channels
+  - Spatial voice chat
+- Audio manager for centralized control
+- Volume controls and mute options
+
+### 4. Scoring System
 - Real-time score synchronization
 - Leaderboard display in VR
 - Score persistence during gameplay
@@ -33,14 +46,14 @@ A complete template for building WebXR multiplayer games using Three.js and WebS
   - Target hits: 10 points
   - Customizable scoring rules
 
-### 4. Game Management
+### 5. Game Management
 - Start/Restart synchronization
 - Room state management
 - Player join/leave handling
 - Game session timing
 - Score reset on game restart
 
-### 5. 3D Models and Assets
+### 6. 3D Models and Assets
 - Hunting rifle model integration
 - Target sphere system
 - VR hands models
@@ -56,8 +69,10 @@ A complete template for building WebXR multiplayer games using Three.js and WebS
 │   │   ├── managers/         # Game systems
 │   │   ├── network/         # Networking code
 │   │   ├── ui/             # User interface
+│   │   ├── audio/          # Audio system
 │   │   └── world/          # 3D world setup
 │   ├── models/             # 3D models
+│   ├── sounds/             # Audio files
 │   └── index.html          # Main entry point
 └── server/
     ├── server.js           # Express server
@@ -72,6 +87,14 @@ Handles all multiplayer functionality:
 - Room creation and joining
 - State synchronization
 - Message handling
+
+### AudioManager
+Controls all audio functionality:
+- Spatial audio setup
+- Sound effect playback
+- Voice chat management
+- Network audio sync
+- Volume control
 
 ### ScoreManager
 Manages scoring system:
@@ -130,6 +153,12 @@ node server/server.js
 3. Update network messages in `NetworkManager.js`
 4. Modify scoring rules in `ScoreManager.js`
 
+### Adding Custom Audio
+1. Place audio files in `client/sounds/`
+2. Register sounds in `AudioManager.js`
+3. Configure spatial audio properties
+4. Set up network synchronization
+
 ### Modifying Game Rules
 - Adjust spawn rates in `BirdManager.js`
 - Modify scoring values
@@ -151,6 +180,8 @@ node server/server.js
 - `birdSpawned`: Target spawning
 - `birdHit`: Target hit registration
 - `scoreUpdate`: Score synchronization
+- `audioEvent`: Sound effect sync
+- `voiceData`: Voice chat packets
 - `gameStart`: Game session start
 - `gameEnd`: Game session end
 
@@ -159,6 +190,12 @@ node server/server.js
 - Quick join finds/creates rooms
 - Host has authority over game start
 - Clients sync to host state
+
+### Audio Synchronization
+- Sound effects synced via WebSocket
+- Voice chat uses WebRTC
+- Spatial audio calculations
+- Network latency compensation
 
 ## Contributing
 
