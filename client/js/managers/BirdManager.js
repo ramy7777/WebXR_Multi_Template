@@ -102,6 +102,9 @@ export class BirdManager {
                 // Remove the bird
                 this.removeBird(id);
 
+                // Update score immediately for both host and client
+                this.engine.scoreManager.updateScore(bullet.shooterId, 10);
+
                 // If we're the host, send the hit event
                 if (this.engine.networkManager && this.engine.networkManager.isHost) {
                     this.engine.networkManager.send({
@@ -139,6 +142,11 @@ export class BirdManager {
     handleNetworkBirdHit(data) {
         // Remove the bird that was hit
         this.removeBird(data.birdId);
+        
+        // Update score for the shooter
+        if (data.bulletShooterId) {
+            this.engine.scoreManager.updateScore(data.bulletShooterId, 10);
+        }
     }
 
     handleBirdKilled(data) {
@@ -146,7 +154,7 @@ export class BirdManager {
         if (bird) {
             // Update score
             if (data.shooterId) {
-                this.engine.uiManager.updateScore(data.shooterId, 10);
+                this.engine.scoreManager.updateScore(data.shooterId, 10);
             }
 
             // Remove the bird
