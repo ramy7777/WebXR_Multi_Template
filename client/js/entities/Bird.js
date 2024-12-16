@@ -4,9 +4,15 @@ export class Bird extends THREE.Object3D {
     constructor(position = new THREE.Vector3(), direction = new THREE.Vector3(1, 0, 0)) {
         super();
         
-        // Create a simple sphere for the bird
-        const geometry = new THREE.SphereGeometry(0.2, 16, 16);
-        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        // Create a smaller green sphere (70% smaller)
+        const geometry = new THREE.SphereGeometry(0.15, 16, 16);
+        const material = new THREE.MeshStandardMaterial({ 
+            color: 0x00ff00,
+            metalness: 0.5,
+            roughness: 0.5,
+            emissive: 0x002200
+        });
+        
         this.mesh = new THREE.Mesh(geometry, material);
         this.add(this.mesh);
         

@@ -95,8 +95,8 @@ export class BirdManager {
     handleBulletCollision(bullet) {
         // Check collision with each bird
         for (const [id, bird] of this.birds) {
-            const birdBoundingSphere = new THREE.Sphere(bird.position, 0.5); // 0.5 is the sphere radius
-            const bulletBoundingSphere = new THREE.Sphere(bullet.position, 0.05); // 0.05 is the bullet radius
+            const birdBoundingSphere = new THREE.Sphere(bird.position, 0.15); // Reduced from 0.5 to 0.15 to match visual size
+            const bulletBoundingSphere = new THREE.Sphere(bullet.position, 0.03); // Reduced from 0.05 to 0.03 for more precise hits
 
             if (birdBoundingSphere.intersectsSphere(bulletBoundingSphere)) {
                 // Remove the bird
